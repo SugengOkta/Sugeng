@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manajemen Laporan Keuangan Personal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Tambahkan Chart.js CDN untuk Visualisasi -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <!-- Favicon SVG transparan -->
+    <link rel="icon" type="image/png" href="Gemini_Generated_Image_13mqjv13mqjv13mq-removebg-preview.png">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .card {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            padding: 1.5rem;
+        }
+        .balance-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .progress-bar {
+            background-color: #e0e0e0;
+            border-radius: 9999px;
+            height: 1rem;
+            width: 100%;
+            overflow: hidden;
+        }
+        .progress-bar-inner {
+            height: 100%;
+            transition: width 0.3s ease-in-out, background-color 0.3s ease-in-out;
+        }
+        #savings-goal-description:hover {
+            cursor: pointer;
+            text-decoration: underline;
+            text-decoration-style: dotted;
+        }
+        .modal, #sidebar-overlay {
+            transition: opacity 0.3s ease;
+        }
+        .modal-card {
+             transform: scale(0.95);
+             opacity: 0;
+             transition: all 0.2s ease-in-out;
+        }
+        .modal.open .modal-card {
+            transform: scale(1);
+            opacity: 1;
+        }
+        #sidebar {
+            transition: transform 0.3s ease-in-out;
+        }
+        .transaction-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .transaction-amount-group {
+            flex-shrink: 0; 
+            white-space: nowrap;
+        }
+        .transaction-description {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            cursor: pointer; 
+        }
+        .filter-active {
+            background-color: #4f46e5; /* indigo-600 */
+            color: white;
+            box-shadow: 0 4px 6px -1px rgb(79 70 229 / 0.3);
+        }
+        .filter-inactive {
+            background-color: #e5e7eb; /* gray-200 */
+            color: #374151; /* gray-700 */
+        }
+        .edit-icon {
+            cursor: pointer;
+            margin-left: 0.5rem;
+        }
+        #next-month-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background-color: #e5e7eb;
+        }
+        /* Utility class to hide radio buttons visually but keep them functional */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <!-- Kontainer Autentikasi -->
+    <div id="auth-container" class="min-h-screen flex items-center justify-center p-4">
+        <div class="max-w-md w-full">
+            <header class="text-center mb-8">
+                <div class="flex flex-col justify-center items-center gap-2 mb-2">
+                    <h1 class="text-3xl sm:text-4xl font-bold text-gray-800">Pelacak Keuangan</h1>
+                </div>
+                <p class="text-gray-600">Login atau daftar untuk melanjutkan</p>
+            </header>
+            <div class="card">
+                <div id="auth-content">
+                    <form id="login-form" class="space-y-4">
+                        <h2 class="text-xl font-bold text-gray-800 mb-4">Login</h2>
+                        <div>
+                            <label for="login-username" class="block text-sm font-medium text-gray-700">Username</label>
+                            <input type="text" id="login-username" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm" required>
+                        </div>
+                        <div>
+                            <label for="login-password" class="block text-sm font-medium text-gray-700">Password</label>
+                            <input type="password" id="login-password" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm" required>
+                        </div>
+                        <p id="login-error" class="text-sm text-red-600"></p>
+                        <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">Login</button>
+                        <p class="text-sm text-center text-gray-600">
+                            Belum punya akun? <a href="#" id="show-signup" class="font-medium text-indigo-600 hover:text-indigo-500">Daftar di sini</a>
+                        </p>
+                    </form>
+                    <form id="signup-form" class="space-y-4 hidden">
+                        <h2 class="text-xl font-bold text-gray-800 mb-4">Daftar Akun Baru</h2>
+                        <div>
+                            <label for="signup-username" class="block text-sm font-medium text-gray-700">Username</label>
+                            <input type="text" id="signup-username" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm" required>
+                        </div>
+                        <div>
+                            <label for="signup-email" class="block text-sm font-medium text-gray-700">Email</label>
+                            <input type="email" id="signup-email" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm" required>
+                        </div>
+                        <div>
+                            <label for="signup-phone" class="block text-sm font-medium text-gray-700">Nomer Telepon</label>
+                            <input type="tel" id="signup-phone" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm" required>
+                        </div>
+                        <div>
+                            <label for="signup-password" class="block text-sm font-medium text-gray-700">Password</label>
+                            <input type="password" id="signup-password" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm" required>
+                        </div>
+                        <p id="signup-error" class="text-sm text-red-600"></p>
+                        <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">Daftar</button>
+                        <p class="text-sm text-center text-gray-600">
+                            Sudah punya akun? <a href="#" id="show-login" class="font-medium text-indigo-600 hover:text-indigo-500">Login di sini</a>
+                        </p>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sidebar -->
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden"></div>
+    <div id="sidebar" class="fixed top-0 left-0 h-full w-72 bg-white shadow-xl z-40 transform -translate-x-full p-6 space-y-6 overflow-y-auto">
+        <div class="flex justify-between items-center">
+            <h2 class="text-xl font-bold">Profil Saya</h2>
+            <button id="close-sidebar-btn"><i data-lucide="x"></i></button>
+        </div>
+        
+        <div class="flex flex-col items-center space-y-2">
+            <div class="relative">
+                <img id="profile-pic" src="https://placehold.co/128x128/E0E7FF/4F46E5?text=Profil" class="w-32 h-32 rounded-full object-cover border-4 border-indigo-200">
+                <label for="profile-pic-upload" class="absolute bottom-0 right-0 bg-indigo-600 p-2 rounded-full cursor-pointer hover:bg-indigo-700">
+                    <i data-lucide="camera" class="w-4 h-4 text-white"></i>
+                    <input type="file" id="profile-pic-upload" class="hidden" accept="image/*">
+                </label>
+            </div>
+             <p id="profile-upload-progress" class="text-sm text-gray-500"></p>
+        </div>
+
+        <div class="space-y-4">
+            <div><label class="text-xs font-semibold text-gray-500">Username</label><p id="profile-username" class="text-gray-800"></p></div>
+            <div><label class="text-xs font-semibold text-gray-500">Email</label><p id="profile-email" class="text-gray-800"></p></div>
+            <div><label class="text-xs font-semibold text-gray-500">Nomer Telepon</label><p id="profile-phone" class="text-gray-800"></p></div>
+        </div>
+        
+        <div class="pt-4 border-t border-gray-200 space-y-2">
+            <button id="reset-all-data-btn" class="w-full text-sm text-yellow-700 hover:text-yellow-800 font-semibold flex items-center justify-center gap-2 py-2 px-4 border border-yellow-200 rounded-md hover:bg-yellow-50">
+                <i data-lucide="alert-triangle" class="w-4 h-4"></i>Reset Total
+            </button>
+            <button id="logout-btn-sidebar" class="w-full text-sm text-red-600 hover:text-red-800 font-semibold flex items-center justify-center gap-2 py-2 px-4 border border-red-200 rounded-md hover:bg-red-50">
+                <i data-lucide="log-out" class="w-4 h-4"></i>Logout
+            </button>
+        </div>
+    </div>
+
+    <!-- Kontainer Aplikasi Utama -->
+    <div id="app-container" class="hidden container mx-auto max-w-4xl p-4 sm:p-6 lg:p-8">
+        <div class="flex justify-between items-center mb-6">
+            <button id="open-sidebar-btn" class="p-2 rounded-md hover:bg-gray-200"><i data-lucide="menu" class="w-6 h-6 text-gray-700"></i></button>
+            <p class="text-sm text-gray-700">Selamat datang, <span id="user-email-main" class="font-semibold"></span></p>
+        </div>
+
+        <main class="space-y-6">
+            <section class="flex justify-between items-center bg-white p-3 rounded-lg shadow-sm">
+                <button id="prev-month-btn" class="p-2 rounded-md hover:bg-gray-200"><i data-lucide="chevron-left" class="pointer-events-none"></i></button>
+                <h2 id="current-month-display" class="text-lg font-bold text-gray-800"></h2>
+                <button id="next-month-btn" class="p-2 rounded-md hover:bg-gray-200"><i data-lucide="chevron-right" class="pointer-events-none"></i></button>
+            </section>
+            
+            <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="card col-span-1 md:col-span-3 balance-card text-white">
+                    <h2 class="text-lg font-medium opacity-80">Saldo Bulan Ini</h2>
+                    <p id="balance" class="text-3xl sm:text-4xl font-bold mt-1">Rp 0</p>
+                </div>
+                <div class="card col-span-1 bg-green-100 border border-green-200">
+                    <h2 class="text-green-800 font-semibold">Pemasukan Bulan Ini</h2>
+                    <p id="income" class="text-xl sm:text-2xl font-bold text-green-600 mt-1">Rp 0</p>
+                </div>
+                <div class="card col-span-1 bg-red-100 border border-red-200">
+                    <h2 class="text-red-800 font-semibold">Pengeluaran Bulan Ini</h2>
+                    <p id="expense" class="text-xl sm:text-2xl font-bold text-red-600 mt-1">Rp 0</p>
+                </div>
+            </section>
+
+            <section class="card">
+                <h2 class="text-xl font-bold text-gray-800 mb-4">Tren Keuangan (6 Bulan Terakhir)</h2>
+                <div id="trends-chart-container" class="relative h-64"><canvas id="trendsChart"></canvas></div>
+                <p id="no-trends-data" class="text-center text-gray-500 py-4 hidden">Data tidak cukup untuk menampilkan tren.</p>
+            </section>
+            
+            <section class="card">
+                <h2 class="text-xl font-bold text-gray-800 mb-4">Analisis Pengeluaran Bulan Ini</h2>
+                <div id="expense-chart-container" class="flex flex-col md:flex-row items-center justify-center gap-6">
+                    <div class="w-full md:max-w-xs"><canvas id="expenseChart"></canvas></div>
+                    <div id="chart-legend" class="text-sm space-y-1 w-full md:w-auto"></div>
+                </div>
+                <p id="no-expense-data" class="text-center text-gray-500 py-4 hidden">Belum ada data pengeluaran bulan ini.</p>
+            </section>
+
+            <section class="card">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-gray-800">Anggaran Bulan Ini</h2>
+                    <button id="set-budget-btn" class="text-sm text-indigo-600 hover:text-indigo-800 font-semibold">Setel Anggaran</button>
+                </div>
+                <div id="budget-list" class="space-y-4">
+                    <p id="no-budget-data" class="text-center text-gray-500 py-4">Belum ada anggaran bulan ini.</p>
+                </div>
+            </section>
+
+            <section class="card">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-gray-800">Transaksi Berulang</h2>
+                    <button id="add-recurring-btn" class="text-sm text-indigo-600 hover:text-indigo-800 font-semibold">Tambah Baru</button>
+                </div>
+                <div id="recurring-list" class="space-y-3">
+                    <p id="no-recurring-data" class="text-center text-gray-500 py-4">Belum ada transaksi berulang.</p>
+                </div>
+            </section>
+
+            <section class="card">
+                <div class="flex justify-between items-center mb-4">
+                    <div class="flex items-center gap-2">
+                        <h2 id="savings-goal-description" class="text-xl font-bold text-gray-800" title="Klik untuk ganti nama tujuan">Tujuan Menabung</h2>
+                        <span id="goal-met-badge" class="hidden items-center gap-1 text-xs font-medium text-green-800 bg-green-200 px-2 py-0.5 rounded-full">
+                            <i data-lucide="check-circle-2" class="w-3 h-3"></i>Tercapai!
+                        </span>
+                    </div>
+                     <button id="set-goal-btn" class="text-sm text-indigo-600 hover:text-indigo-800 font-semibold">Setel Tujuan</button>
+                </div>
+                <div class="space-y-2">
+                    <div class="progress-bar"><div id="savings-progress" class="progress-bar-inner bg-green-400" style="width: 0%;"></div></div>
+                    <div class="flex justify-between text-sm font-medium text-gray-600">
+                        <span id="savings-total">Rp 0</span>
+                        <span id="savings-goal">Target: Rp 0</span>
+                    </div>
+                    <div class="text-right text-sm text-gray-500 mt-1"><span id="savings-remaining">Sisa: Rp 0</span></div>
+                </div>
+            </section>
+
+            <section class="card">
+                <h2 class="text-xl font-bold text-gray-800 mb-4">Tambah Transaksi Baru</h2>
+                <form id="transaction-form" class="space-y-4">
+                    <div>
+                        <label for="description" class="block text-sm font-medium text-gray-700">Deskripsi</label>
+                        <input type="text" id="description" placeholder="Gaji bulanan, Makan siang" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md" required>
+                    </div>
+                    <div>
+                        <label for="amount" class="block text-sm font-medium text-gray-700">Jumlah (Rp)</label>
+                        <input type="number" id="amount" placeholder="50000" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md" required>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 sm:gap-4 text-center">
+                        <label for="type-income" class="cursor-pointer block p-2 border rounded-md has-[:checked]:bg-indigo-50 has-[:checked]:border-indigo-400">
+                            <input id="type-income" name="type" type="radio" value="income" class="sr-only" checked>
+                            <span class="text-xs sm:text-sm font-medium">Pemasukan</span>
+                        </label>
+                        <label for="type-expense" class="cursor-pointer block p-2 border rounded-md has-[:checked]:bg-indigo-50 has-[:checked]:border-indigo-400">
+                            <input id="type-expense" name="type" type="radio" value="expense" class="sr-only">
+                            <span class="text-xs sm:text-sm font-medium">Pengeluaran</span>
+                        </label>
+                         <label for="type-savings" class="cursor-pointer block p-2 border rounded-md has-[:checked]:bg-indigo-50 has-[:checked]:border-indigo-400">
+                            <input id="type-savings" name="type" type="radio" value="savings" class="sr-only">
+                            <span class="text-xs sm:text-sm font-medium">Tabungan</span>
+                        </label>
+                    </div>
+                     <div id="category-container" style="display: none;">
+                        <label for="category" class="block text-sm font-medium text-gray-700">Kategori</label>
+                        <select id="category" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md">
+                            <option>Makanan & Minuman</option><option>Transportasi</option><option>Belanja</option><option>Tagihan & Utilitas</option><option>Hiburan</option><option>Kesehatan</option><option>Pendidikan</option><option>Lainnya</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">Tambah Transaksi</button>
+                </form>
+            </section>
+            
+            <section class="card">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-gray-800">Riwayat Transaksi</h2>
+                    <button id="clear-history-btn" class="text-sm text-red-600 hover:text-red-800 font-semibold flex items-center gap-1">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>Hapus Semua
+                    </button>
+                </div>
+                <div id="transaction-filter-buttons" class="flex flex-wrap gap-2 mb-4">
+                    <button data-filter="all" class="filter-btn text-xs px-3 py-1 rounded-full font-medium filter-active">Semua</button>
+                    <button data-filter="income" class="filter-btn text-xs px-3 py-1 rounded-full font-medium filter-inactive">Pemasukan</button>
+                    <button data-filter="expense" class="filter-btn text-xs px-3 py-1 rounded-full font-medium filter-inactive">Pengeluaran</button>
+                    <button data-filter="savings" class="filter-btn text-xs px-3 py-1 rounded-full font-medium filter-inactive">Tabungan</button>
+                    <button data-filter="completed_savings" class="filter-btn text-xs px-3 py-1 rounded-full font-medium filter-inactive">Dana Selesai</button>
+                </div>
+                <ul id="transaction-list" class="space-y-3 text-sm">
+                    <li id="no-transaction" class="text-center text-gray-500 py-4">Belum ada transaksi.</li>
+                </ul>
+            </section>
+            
+            <section class="card">
+                <h2 class="text-xl font-bold text-gray-800 mb-4">Riwayat Tujuan Tercapai</h2>
+                <ul id="completed-goals-list" class="space-y-3 text-sm">
+                    <li id="no-completed-goal" class="text-center text-gray-500 py-4">Belum ada tujuan yang tercapai.</li>
+                </ul>
+            </section>
+        </main>
+        
+        <footer class="text-center mt-8 text-sm text-gray-500"><p>Meningkatkan stabilitas finansial pribadi Anda</p></footer>
+    </div>
+
+    <!-- Modals -->
+    <div id="recurring-transaction-modal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center p-4 z-50">
+        <div class="card w-11/12 max-w-lg mx-auto modal-card">
+            <h3 id="recurring-modal-title" class="text-lg font-medium leading-6 text-gray-900 mb-4">Tambah Transaksi Berulang</h3>
+            <form id="recurring-transaction-form" class="space-y-4">
+                <input type="hidden" id="recurring-transaction-id">
+                <div>
+                    <label for="recurring-description" class="block text-sm font-medium">Deskripsi</label>
+                    <input type="text" id="recurring-description" placeholder="Langganan Netflix" class="mt-1 w-full px-3 py-2 border rounded-md" required>
+                </div>
+                <div>
+                    <label for="recurring-amount" class="block text-sm font-medium">Jumlah (Rp)</label>
+                    <input type="number" id="recurring-amount" placeholder="186000" class="mt-1 w-full px-3 py-2 border rounded-md" required>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm font-medium">Tipe:</span>
+                    <div class="flex items-center"><input id="recurring-type-income" name="recurring-type" type="radio" value="income" class="h-4 w-4 text-indigo-600"><label for="recurring-type-income" class="ml-2">Pemasukan</label></div>
+                    <div class="flex items-center"><input id="recurring-type-expense" name="recurring-type" type="radio" value="expense" class="h-4 w-4 text-indigo-600" checked><label for="recurring-type-expense" class="ml-2">Pengeluaran</label></div>
+                </div>
+                <div id="recurring-category-container">
+                    <label for="recurring-category" class="block text-sm font-medium">Kategori</label>
+                    <select id="recurring-category" class="mt-1 w-full pl-3 pr-10 py-2 border rounded-md">
+                         <option>Makanan & Minuman</option><option>Transportasi</option><option>Belanja</option><option>Tagihan & Utilitas</option><option>Hiburan</option><option>Kesehatan</option><option>Pendidikan</option><option>Lainnya</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="recurring-frequency" class="block text-sm font-medium">Frekuensi</label>
+                    <select id="recurring-frequency" class="mt-1 w-full pl-3 pr-10 py-2 border rounded-md">
+                        <option value="weekly">Mingguan</option>
+                        <option value="monthly" selected>Bulanan</option>
+                        <option value="yearly">Tahunan</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="recurring-start-date" class="block text-sm font-medium">Tanggal Mulai</label>
+                    <input type="date" id="recurring-start-date" class="mt-1 w-full px-3 py-2 border rounded-md" required>
+                </div>
+                <div class="mt-4 flex justify-end space-x-2">
+                    <button type="button" id="cancel-recurring-transaction-btn" class="px-4 py-2 bg-white text-sm rounded-md border">Batal</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-sm text-white rounded-md">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div id="budget-modal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center p-4 z-50">
+        <div class="card w-11/12 max-w-lg mx-auto modal-card">
+            <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Setel Anggaran Bulanan</h3>
+            <p class="text-sm text-gray-500 mb-4">Masukkan 0 atau kosongkan jika tidak ingin mengatur anggaran.</p>
+            <form id="budget-form" class="space-y-3 max-h-[60vh] overflow-y-auto pr-2"></form>
+             <div class="mt-4 flex justify-end space-x-2">
+                <button type="button" id="cancel-budget-btn" class="px-4 py-2 bg-white text-sm rounded-md border">Batal</button>
+                <button type="button" id="save-budget-btn" class="px-4 py-2 bg-indigo-600 text-sm text-white rounded-md">Simpan</button>
+            </div>
+        </div>
+    </div>
+    <div id="goal-modal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center p-4 z-50">
+        <div class="card w-11/12 max-w-md mx-auto modal-card">
+            <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Setel Target Tabungan</h3>
+            <form id="goal-form">
+                <div>
+                    <label for="goal-amount" class="block text-sm font-medium">Jumlah Target (Rp)</label>
+                    <input type="number" id="goal-amount" placeholder="5000000" class="mt-1 block w-full px-3 py-2 border rounded-md" required>
+                </div>
+                <div class="mt-4 flex justify-end space-x-2">
+                    <button type="button" id="cancel-goal-btn" class="px-4 py-2 bg-white text-sm rounded-md border">Batal</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-sm text-white rounded-md">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="edit-desc-modal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center p-4 z-50">
+        <div class="card w-11/12 max-w-md mx-auto modal-card">
+            <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Ubah Nama Tujuan</h3>
+            <form id="edit-desc-form">
+                <div>
+                    <label for="edit-desc-input" class="block text-sm font-medium">Nama Tujuan</label>
+                    <input type="text" id="edit-desc-input" placeholder="Dana Liburan" class="mt-1 block w-full px-3 py-2 border rounded-md" required>
+                </div>
+                <div class="mt-4 flex justify-end space-x-2">
+                    <button type="button" id="cancel-edit-desc-btn" class="px-4 py-2 bg-white text-sm rounded-md border">Batal</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-sm text-white rounded-md">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="edit-transaction-modal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center p-4 z-50">
+        <div class="card w-11/12 max-w-md mx-auto modal-card">
+            <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Edit Transaksi</h3>
+            <form id="edit-transaction-form" class="space-y-4">
+                <input type="hidden" id="edit-transaction-id"><input type="hidden" id="edit-transaction-original-type">
+                <div><label for="edit-description" class="block text-sm font-medium">Deskripsi</label><input type="text" id="edit-description" class="mt-1 block w-full px-3 py-2 border rounded-md" required></div>
+                <div><label for="edit-amount" class="block text-sm font-medium">Jumlah (Rp)</label><input type="number" id="edit-amount" class="mt-1 block w-full px-3 py-2 border rounded-md" required></div>
+                <div id="edit-category-container">
+                    <label for="edit-category" class="block text-sm font-medium">Kategori</label>
+                    <select id="edit-category" class="mt-1 block w-full pl-3 pr-10 py-2 border rounded-md">
+                        <option>Makanan & Minuman</option><option>Transportasi</option><option>Belanja</option><option>Tagihan & Utilitas</option><option>Hiburan</option><option>Kesehatan</option><option>Pendidikan</option><option>Lainnya</option>
+                    </select>
+                </div>
+                <div class="mt-4 flex justify-end space-x-2">
+                    <button type="button" id="cancel-edit-transaction-btn" class="px-4 py-2 bg-white text-sm rounded-md border">Batal</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-sm text-white rounded-md">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="confirm-modal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center p-4 z-50">
+        <div class="card w-11/12 max-w-md mx-auto modal-card">
+            <h3 id="confirm-modal-title" class="text-lg font-medium leading-6 text-gray-900 mb-4">Konfirmasi</h3>
+            <div id="confirm-modal-body" class="mt-2"><p id="confirm-modal-text" class="text-sm text-gray-500">Apakah Anda yakin?</p></div>
+            <div id="confirm-modal-custom-buttons" class="mt-4 flex justify-end space-x-2 hidden"></div>
+            <div id="confirm-modal-confirm-buttons" class="mt-4 flex justify-end space-x-2">
+                <button type="button" id="cancel-confirm-btn" class="px-4 py-2 bg-white text-sm rounded-md border">Batal</button>
+                <button type="button" id="confirm-action-btn" class="px-4 py-2 bg-red-600 text-sm text-white rounded-md">Hapus</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js";
+        import { getFirestore, collection, addDoc, doc, getDoc, setDoc, deleteDoc, getDocs, onSnapshot, query, writeBatch, where, updateDoc } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
+        import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-storage.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDOkgxlJ2a3_KA5Say1KFVDiEO9kDrJNZk",
+            authDomain: "report-keuangan-a80e5.firebaseapp.com",
+            projectId: "report-keuangan-a80e5",
+            storageBucket: "report-keuangan-a80e5.appspot.com",
+            messagingSenderId: "470781292309",
+            appId: "1:470781292309:web:95821ddd6b2866a171c31c",
+            measurementId: "G-XHN6BPGFJ3"
+        };
+
+        // --- App Initialization ---
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+
+        // --- State Management ---
+        let unsubscribeListeners = [];
+        let localTransactions = [], localCurrentGoal = {}, localCompletedGoals = [], localProfile = {}, localBudgets = {}, localRecurring = [];
+        let currentFilter = 'all';
+        let currentDisplayDate = new Date();
+        let expenseChartInstance, trendsChartInstance = null;
+        let confirmActionCallback = null;
+        let isArchiving = false;
+
+        // --- Constants & Helper Functions ---
+        const CATEGORY_COLORS = { 'Makanan & Minuman': '#F87171', 'Transportasi': '#60A5FA', 'Belanja': '#FBBF24', 'Tagihan & Utilitas': '#34D399', 'Hiburan': '#A78BFA', 'Kesehatan': '#FB71A9', 'Pendidikan': '#6EE7B7', 'Lainnya': '#9CA3AF' };
+        const EXPENSE_CATEGORIES = Object.keys(CATEGORY_COLORS);
+        const $ = id => document.getElementById(id);
+        const formatCurrency = a => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(a);
+        const formatDate = t => new Date(t).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: '2-digit' });
+        const getMonthYear = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        const openModal = m => { m.classList.remove('hidden'); setTimeout(() => m.classList.add('open'), 10); };
+        const closeModal = m => { m.classList.remove('open'); setTimeout(() => m.classList.add('hidden'), 300); };
+        const showConfirmModal = (title, text, callback, btnText, btnClass) => {
+            $('confirm-modal-title').textContent = title;
+            $('confirm-modal-text').textContent = text;
+            $('confirm-modal-custom-buttons').classList.add('hidden');
+            $('confirm-modal-confirm-buttons').classList.remove('hidden');
+            const confirmBtn = $('confirm-action-btn');
+            confirmBtn.textContent = btnText || 'Hapus';
+            confirmBtn.className = `px-4 py-2 ${btnClass || 'bg-red-600 hover:bg-red-700'} text-sm font-medium text-white rounded-md`;
+            confirmActionCallback = callback;
+            openModal($('confirm-modal'));
+        };
+
+        // DOM Elements
+        const authContainer=$('auth-container'),appContainer=$('app-container'),loginForm=$('login-form'),signupForm=$('signup-form'),userEmailMainEl=$('user-email-main'),balanceEl=$('balance'),incomeEl=$('income'),expenseEl=$('expense'),transactionListEl=$('transaction-list'),transactionForm=$('transaction-form'),noTransactionMessage=$('no-transaction'),savingsGoalDescriptionEl=$('savings-goal-description'),savingsTotalEl=$('savings-total'),savingsGoalEl=$('savings-goal'),savingsProgressEl=$('savings-progress'),goalMetBadge=$('goal-met-badge'),savingsRemainingEl=$('savings-remaining'),completedGoalsListEl=$('completed-goals-list'),noCompletedGoalMessage=$('no-completed-goal'),goalModal=$('goal-modal'),goalForm=$('goal-form'),goalAmountInput=$('goal-amount'),editDescModal=$('edit-desc-modal'),editDescForm=$('edit-desc-form'),editDescInput=$('edit-desc-input'),confirmModal=$('confirm-modal'),sidebar=$('sidebar'),sidebarOverlay=$('sidebar-overlay'),profilePicEl=$('profile-pic'),profileUploadProgressEl=$('profile-upload-progress'),profileUsernameEl=$('profile-username'),profileEmailEl=$('profile-email'),profilePhoneEl=$('profile-phone'),chartLegendEl=$('chart-legend'),noExpenseDataEl=$('no-expense-data'),editTransactionModal=$('edit-transaction-modal'),editTransactionForm=$('edit-transaction-form'),editTransactionIdInput=$('edit-transaction-id'),editTransactionOriginalTypeInput=$('edit-transaction-original-type'),editDescriptionInput=$('edit-description'),editAmountInput=$('edit-amount'),editCategoryContainer=$('edit-category-container'),editCategorySelect=$('edit-category'),budgetModal=$('budget-modal'),budgetForm=$('budget-form'),budgetListEl=$('budget-list'),noBudgetDataEl=$('no-budget-data'),prevMonthBtn=$('prev-month-btn'),nextMonthBtn=$('next-month-btn'),currentMonthDisplay=$('current-month-display'),noTrendsDataEl=$('no-trends-data'),trendsChartContainer=$('trends-chart-container'),recurringTransactionModal=$('recurring-transaction-modal'),recurringModalTitle=$('recurring-modal-title'),recurringTransactionForm=$('recurring-transaction-form'),recurringListEl=$('recurring-list'),noRecurringDataEl=$('no-recurring-data'),recurringCategoryContainer=$('recurring-category-container');
+
+        // --- Main UI Update Function ---
+        function updateAllUI() {
+            updateMonthDisplay();
+            const monthlyTransactions = localTransactions.filter(t => {
+                const tDate = new Date(t.createdAt);
+                return tDate.getFullYear() === currentDisplayDate.getFullYear() && tDate.getMonth() === currentDisplayDate.getMonth();
+            });
+            updateSummary(monthlyTransactions);
+            renderExpenseChart(monthlyTransactions);
+            renderBudgetsUI(monthlyTransactions);
+            renderTransactions();
+            updateSavingsUI(); 
+            renderCompletedGoals();
+            updateProfileUI();
+            renderTrendsChart();
+            renderRecurringTransactions();
+            lucide.createIcons();
+        }
+
+        // --- UI Rendering ---
+        function updateMonthDisplay() {
+            currentMonthDisplay.textContent = currentDisplayDate.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+            const now = new Date();
+            nextMonthBtn.disabled = currentDisplayDate.getFullYear() === now.getFullYear() && currentDisplayDate.getMonth() === now.getMonth();
+        }
+        function updateSummary(monthlyTransactions) {
+            const income = monthlyTransactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+            const expense = monthlyTransactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+            const savings = monthlyTransactions.filter(t => t.type === 'savings').reduce((s, t) => s + t.amount, 0);
+            balanceEl.textContent = formatCurrency(income - expense - savings);
+            incomeEl.textContent = formatCurrency(income);
+            expenseEl.textContent = formatCurrency(expense);
+        }
+        function renderTransactions() {
+            let filtered = currentFilter !== 'all' ? localTransactions.filter(t => t.type === currentFilter) : localTransactions.filter(t => t.type !== 'completed_savings');
+            
+            noTransactionMessage.style.display = filtered.length === 0 ? 'block' : 'none';
+            transactionListEl.innerHTML = '';
+            
+            filtered.sort((a, b) => b.createdAt - a.createdAt).forEach(t => {
+                let colorClass, typeText;
+                switch(t.type) {
+                    case 'income': colorClass = { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-600', badge: 'bg-green-200 text-green-800' }; typeText = 'Pemasukan'; break;
+                    case 'expense': colorClass = { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-600', badge: 'bg-red-200 text-red-800' }; typeText = 'Pengeluaran'; break;
+                    case 'savings': colorClass = { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-600', badge: 'bg-blue-200 text-blue-800' }; typeText = 'Tabungan'; break;
+                    case 'completed_savings': colorClass = { bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-600', badge: 'bg-purple-200 text-purple-800' }; typeText = 'Dana Selesai'; break;
+                }
+                const badge = t.type === 'expense' && t.category ? `<div class="text-xs text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full">${t.category}</div>` : `<div class="text-xs ${colorClass.badge} px-2 py-0.5 rounded-full">${typeText}</div>`;
+                
+                const itemEl = document.createElement('li');
+                itemEl.className = `p-3 rounded-lg border ${colorClass.bg} ${colorClass.border} cursor-pointer`;
+                itemEl.dataset.id = t.id; // Add ID for click listener
+                itemEl.innerHTML = `
+                    <div class="transaction-item">
+                        <div class="flex-grow min-w-0 mr-4">
+                            <p class="font-medium text-gray-800 transaction-description text-sm sm:text-base" title="${t.description}">${t.description}</p>
+                            <div class="flex items-center gap-2 mt-1">
+                                ${badge}
+                                <span class="text-xs text-gray-500">${formatDate(t.createdAt)}</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 transaction-amount-group">
+                            <span class="font-bold ${colorClass.text} text-sm sm:text-base">${t.type === 'income' ? '+' : '-'} ${formatCurrency(t.amount)}</span>
+                        </div>
+                    </div>`;
+                transactionListEl.appendChild(itemEl);
+            });
+
+            // Re-attach all event listeners for the list
+            transactionListEl.querySelectorAll('li').forEach(el => {
+                el.addEventListener('click', () => {
+                    const transaction = localTransactions.find(t => t.id === el.dataset.id);
+                    if (transaction) {
+                        showTransactionDetailModal(transaction);
+                    }
+                });
+            });
+        }
+        function updateProfileUI() { 
+            profileUsernameEl.textContent = localProfile.username || '...'; 
+            profileEmailEl.textContent = localProfile.email || '...'; 
+            profilePhoneEl.textContent = localProfile.phone || '...'; 
+            profilePicEl.src = localProfile.photoURL || 'https://placehold.co/128x128/E0E7FF/4F46E5?text=Profil'; 
+        }
+        function updateSavingsUI() {
+            const saved = localTransactions.filter(t => t.type === 'savings').reduce((s, t) => s + t.amount, 0);
+            const goal = localCurrentGoal.amount || 0;
+            savingsTotalEl.textContent = formatCurrency(saved);
+            savingsGoalEl.textContent = `Target: ${formatCurrency(goal)}`;
+            savingsRemainingEl.textContent = `Sisa: ${formatCurrency(Math.max(0, goal - saved))}`;
+            savingsProgressEl.style.width = `${Math.min(goal > 0 ? (saved / goal) * 100 : 0, 100)}%`;
+            const isMet = saved >= goal && goal > 0;
+            goalMetBadge.style.display = isMet ? 'flex' : 'none';
+            if (isMet && !localCurrentGoal.isCompleted) checkAndArchiveGoal();
+        }
+        function renderCompletedGoals() {
+            noCompletedGoalMessage.style.display = localCompletedGoals.length === 0 ? 'block' : 'none';
+            completedGoalsListEl.innerHTML = localCompletedGoals.sort((a,b) => b.date.toMillis() - a.date.toMillis()).map(g => `<li class="flex justify-between items-center p-3 rounded-lg border bg-yellow-50 border-yellow-200"><div class="flex items-center gap-3"><i data-lucide="award" class="w-5 h-5 text-yellow-600"></i><div><div class="font-medium">${g.description}</div><div class="text-xs text-gray-500">Tercapai pada ${formatDate(g.date.toMillis())}</div></div></div><span class="font-bold text-yellow-800">${formatCurrency(g.amount)}</span></li>`).join('');
+        }
+        function renderRecurringTransactions() {
+            noRecurringDataEl.style.display = localRecurring.length === 0 ? 'block' : 'none';
+            recurringListEl.innerHTML = '';
+            localRecurring.forEach(item => {
+                const freq = {'weekly':'Mingguan','monthly':'Bulanan','yearly':'Tahunan'};
+                const itemEl = document.createElement('div');
+                itemEl.className = 'p-3 rounded-lg border flex justify-between items-center bg-gray-50';
+                itemEl.innerHTML = `<div><p class="font-medium">${item.description}</p><p class="text-xs text-gray-500">${formatCurrency(item.amount)} per ${freq[item.frequency]} - Berikutnya: ${formatDate(item.nextDueDate.toDate())}</p></div><div class="flex items-center gap-2"><button data-id="${item.id}" class="edit-recurring-btn text-gray-400 hover:text-indigo-500"><i data-lucide="pencil" class="w-4 h-4 pointer-events-none"></i></button><button data-id="${item.id}" data-desc="${item.description}" class="delete-recurring-btn text-gray-400 hover:text-red-500"><i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i></button></div>`;
+                recurringListEl.appendChild(itemEl);
+            });
+            recurringListEl.querySelectorAll('.edit-recurring-btn').forEach(b => b.addEventListener('click', () => openRecurringModal(localRecurring.find(i => i.id === b.dataset.id))));
+            recurringListEl.querySelectorAll('.delete-recurring-btn').forEach(b => b.addEventListener('click', () => deleteRecurringTransaction(b.dataset.id, b.dataset.desc)));
+        }
+        
+        // --- Charting ---
+        function renderTrendsChart() {
+            const labels = [], incomeData = [], expenseData = [];
+            for (let i = 5; i >= 0; i--) {
+                const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i);
+                labels.push(d.toLocaleDateString('id-ID', { month: 'short' }));
+                const start = new Date(d.getFullYear(), d.getMonth(), 1), end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
+                const monthly = localTransactions.filter(t => new Date(t.createdAt) >= start && new Date(t.createdAt) <= end);
+                incomeData.push(monthly.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0));
+                expenseData.push(monthly.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0));
+            }
+            const hasData = incomeData.some(d => d > 0) || expenseData.some(d => d > 0);
+            noTrendsDataEl.style.display = hasData ? 'none' : 'block';
+            trendsChartContainer.style.display = hasData ? 'block' : 'none';
+            if (!hasData) { if (trendsChartInstance) trendsChartInstance.destroy(); return; }
+            const ctx = $('trendsChart').getContext('2d');
+            if (trendsChartInstance) trendsChartInstance.destroy();
+            trendsChartInstance = new Chart(ctx, { type: 'line', data: { labels, datasets: [{ label: 'Pemasukan', data: incomeData, borderColor: '#34D399', tension: 0.1 }, { label: 'Pengeluaran', data: expenseData, borderColor: '#F87171', tension: 0.1 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { ticks: { callback: v => formatCurrency(v).replace('Rp', '') } } }, plugins: { tooltip: { callbacks: { label: c => `${c.dataset.label}: ${formatCurrency(c.raw)}` } } } } });
+        }
+        function renderExpenseChart(monthlyTransactions) {
+            const totals = monthlyTransactions.filter(t => t.type === 'expense' && t.category).reduce((a, t) => { a[t.category] = (a[t.category] || 0) + t.amount; return a; }, {});
+            const categories = Object.keys(totals), amounts = Object.values(totals), colors = categories.map(c => CATEGORY_COLORS[c] || '#9CA3AF');
+            const hasData = amounts.reduce((s, a) => s + a, 0) > 0;
+            noExpenseDataEl.style.display = hasData ? 'none' : 'block';
+            $('expense-chart-container').style.display = hasData ? 'flex' : 'none';
+            if (!hasData) { if (expenseChartInstance) expenseChartInstance.destroy(); chartLegendEl.innerHTML = ''; return; }
+            const totalSum = amounts.reduce((s, a) => s + a, 0);
+            chartLegendEl.innerHTML = categories.map((c, i) => `<div class="flex items-center justify-between"><div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full" style="background-color: ${colors[i]};"></span><span>${c}</span></div><span>${(amounts[i] / totalSum * 100).toFixed(1)}%</span></div>`).join('');
+            const ctx = $('expenseChart').getContext('2d');
+            if (expenseChartInstance) expenseChartInstance.destroy();
+            expenseChartInstance = new Chart(ctx, { type: 'doughnut', data: { labels: categories, datasets: [{ data: amounts, backgroundColor: colors, borderWidth: 2, borderColor: '#fff' }] }, options: { responsive: true, cutout: '75%', plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${c.label}: ${formatCurrency(c.raw)}` } } } } });
+        }
+        function renderBudgetsUI(monthlyTransactions) {
+            const spent = monthlyTransactions.filter(t => t.type === 'expense' && t.category).reduce((a, t) => { a[t.category] = (a[t.category] || 0) + t.amount; return a; }, {});
+            const hasBudgets = Object.values(localBudgets).some(v => v > 0);
+            noBudgetDataEl.style.display = hasBudgets ? 'none' : 'block';
+            budgetListEl.innerHTML = '';
+            if (hasBudgets) {
+                Object.entries(localBudgets).forEach(([category, budget]) => {
+                    if (budget > 0) {
+                        const spentAmount = spent[category] || 0, progress = (spentAmount / budget) * 100;
+                        const color = progress > 100 ? 'bg-red-500' : progress > 75 ? 'bg-yellow-500' : 'bg-green-500';
+                        const item = document.createElement('div');
+                        item.innerHTML = `<div class="flex justify-between items-center mb-1"><span class="font-medium text-sm">${category}</span><span class="text-xs text-gray-500">${formatCurrency(spentAmount)} / ${formatCurrency(budget)}</span></div><div class="progress-bar"><div class="progress-bar-inner ${color}" style="width: ${Math.min(progress, 100)}%;"></div></div>`;
+                        budgetListEl.appendChild(item);
+                    }
+                });
+            }
+        }
+
+        // --- Modals Logic ---
+        function showTransactionDetailModal(transaction) {
+            const modal = $('confirm-modal');
+            const customButtons = $('confirm-modal-custom-buttons');
+            
+            $('confirm-modal-title').textContent = 'Detail Transaksi';
+            $('confirm-modal-text').textContent = transaction.description;
+            
+            $('confirm-modal-confirm-buttons').classList.add('hidden');
+            customButtons.classList.remove('hidden');
+            customButtons.innerHTML = '';
+
+            if (transaction.type !== 'completed_savings') {
+                const editBtn = document.createElement('button');
+                editBtn.className = "px-4 py-2 bg-indigo-600 text-sm font-medium text-white rounded-md shadow-sm hover:bg-indigo-700";
+                editBtn.innerHTML = '<i data-lucide="pencil" class="w-4 h-4 inline -mt-1 mr-1"></i> Edit';
+                editBtn.onclick = () => { closeModal(modal); openEditTransactionModal(transaction); };
+                customButtons.appendChild(editBtn);
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = "px-4 py-2 bg-red-600 text-sm font-medium text-white rounded-md shadow-sm hover:bg-red-700";
+                deleteBtn.innerHTML = '<i data-lucide="trash-2" class="w-4 h-4 inline -mt-1 mr-1"></i> Hapus';
+                deleteBtn.onclick = () => { closeModal(modal); showConfirmModal('Hapus Transaksi', `Yakin ingin menghapus "${transaction.description}"?`, () => deleteTransaction(transaction.id)); };
+                customButtons.appendChild(deleteBtn);
+            }
+
+            const closeBtn = document.createElement('button');
+            closeBtn.className = "px-4 py-2 bg-white text-sm font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50";
+            closeBtn.textContent = 'Tutup';
+            closeBtn.onclick = () => closeModal(modal);
+            customButtons.appendChild(closeBtn);
+            
+            lucide.createIcons();
+            openModal(modal);
+        }
+        function openBudgetModal(){
+            budgetForm.innerHTML = EXPENSE_CATEGORIES.map(c => {
+                const amount = localBudgets[c] || '';
+                return `<div class="grid grid-cols-3 items-center gap-2"><label for="budget-${c}" class="col-span-1 text-sm">${c}</label><input type="number" id="budget-${c}" name="${c}" value="${amount}" placeholder="0" class="col-span-2 mt-1 w-full px-3 py-2 border rounded-md"></div>`;
+            }).join('');
+            openModal(budgetModal);
+        }
+        function openEditTransactionModal(transaction) {
+            editTransactionIdInput.value = transaction.id;
+            editTransactionOriginalTypeInput.value = transaction.type;
+            editDescriptionInput.value = transaction.description;
+            editAmountInput.value = transaction.amount;
+            const isExpense = transaction.type === 'expense';
+            editCategoryContainer.style.display = isExpense ? 'block' : 'none';
+            editCategorySelect.required = isExpense;
+            if (isExpense) editCategorySelect.value = transaction.category || 'Lainnya';
+            openModal(editTransactionModal);
+        }
+        function openRecurringModal(item = null) {
+            recurringTransactionForm.reset();
+            $('recurring-transaction-id').value = item ? item.id : '';
+            recurringModalTitle.textContent = item ? 'Edit Transaksi Berulang' : 'Tambah Transaksi Berulang';
+            if (item) {
+                $('recurring-description').value = item.description;
+                $('recurring-amount').value = item.amount;
+                document.querySelector(`input[name="recurring-type"][value="${item.type}"]`).checked = true;
+                if (item.type === 'expense') $('recurring-category').value = item.category;
+                $('recurring-frequency').value = item.frequency;
+                $('recurring-start-date').value = item.startDate.toDate().toISOString().split('T')[0];
+            } else {
+                $('recurring-start-date').value = new Date().toISOString().split('T')[0];
+            }
+            const isExpense = document.querySelector('input[name="recurring-type"]:checked').value === 'expense';
+            recurringCategoryContainer.style.display = isExpense ? 'block' : 'none';
+            openModal(recurringTransactionModal);
+        }
+
+        // --- Firebase/Actions Logic ---
+        onAuthStateChanged(auth, async user => {
+            if (user) {
+                authContainer.style.display = 'none';
+                appContainer.style.display = 'block';
+                userEmailMainEl.textContent = user.email;
+                await setupFirestoreListeners(user.uid);
+                await checkAndGenerateRecurringTransactions(user.uid);
+            } else {
+                authContainer.style.display = 'flex';
+                appContainer.style.display = 'none';
+                unsubscribeListeners.forEach(unsub => unsub());
+                Object.assign(window, { localTransactions: [], localCurrentGoal: {}, localCompletedGoals: [], localProfile: {}, localBudgets: {}, localRecurring: [] });
+                updateAllUI();
+            }
+        });
+        async function setupFirestoreListeners(userId) {
+            unsubscribeListeners.forEach(unsub => unsub());
+            unsubscribeListeners = [
+                onSnapshot(doc(db, 'users', userId, 'profile', 'data'), d => { localProfile = d.exists() ? d.data() : {}; updateProfileUI(); }),
+                onSnapshot(collection(db, 'users', userId, 'transactions'), s => { localTransactions = s.docs.map(d => ({ id: d.id, ...d.data(), createdAt: d.data().createdAt?.toMillis() || Date.now() })); updateAllUI(); }),
+                onSnapshot(doc(db, 'users', userId, 'goal', 'current'), d => { localCurrentGoal = d.exists() ? d.data() : { description: 'Tujuan Menabung', amount: 0, isCompleted: false }; updateSavingsUI(); }),
+                onSnapshot(collection(db, 'users', userId, 'completedGoals'), s => { localCompletedGoals = s.docs.map(d => ({ id: d.id, ...d.data() })); renderCompletedGoals(); }),
+                onSnapshot(doc(db, 'users', userId, 'budgets', getMonthYear(currentDisplayDate)), d => { localBudgets = d.exists() ? d.data().budgets || {} : {}; updateAllUI(); }),
+                onSnapshot(collection(db, 'users', userId, 'recurringTransactions'), s => { localRecurring = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => a.nextDueDate - b.nextDueDate); renderRecurringTransactions(); })
+            ];
+        }
+        
+        async function saveBudgets() {
+            const userId = auth.currentUser?.uid; if (!userId) return;
+            const newBudgets = {};
+            budgetForm.querySelectorAll('input').forEach(i => {
+                const amount = parseFloat(i.value) || 0;
+                if (amount > 0) newBudgets[i.name] = amount;
+            });
+            try {
+                await setDoc(doc(db, 'users', userId, 'budgets', getMonthYear(currentDisplayDate)), { budgets: newBudgets, lastUpdated: new Date() });
+                closeModal(budgetModal);
+            } catch (error) { console.error("Error saving budgets:", error); }
+        }
+        async function deleteTransaction(id) {
+            const userId = auth.currentUser?.uid; if (!userId) return;
+            try { await deleteDoc(doc(db, 'users', userId, 'transactions', id)); } catch (e) { console.error(e); }
+        }
+        async function deleteAllTransactions() {
+            const userId = auth.currentUser?.uid; if (!userId) return;
+            try {
+                const snapshot = await getDocs(query(collection(db, 'users', userId, 'transactions')));
+                const batch = writeBatch(db);
+                snapshot.docs.forEach(d => batch.delete(d.ref));
+                await batch.commit();
+            } catch (e) { console.error(e); }
+        }
+        async function resetAllData() {
+            const userId = auth.currentUser?.uid; if (!userId) return;
+            try {
+                const batch = writeBatch(db);
+                const collections = ['transactions', 'completedGoals', 'recurringTransactions', 'budgets'];
+                for (const coll of collections) {
+                    const snapshot = await getDocs(collection(db, 'users', userId, coll));
+                    snapshot.docs.forEach(d => batch.delete(d.ref));
+                }
+                batch.set(doc(db, 'users', userId, 'goal', 'current'), { description: 'Tujuan Menabung', amount: 0, isCompleted: false });
+                await batch.commit();
+                sidebar.classList.add('-translate-x-full'); 
+                sidebarOverlay.classList.add('hidden');
+            } catch (e) { console.error(e); }
+        }
+        async function checkAndArchiveGoal() {
+            const userId = auth.currentUser?.uid; if (!userId || isArchiving) return;
+            const currentSavings = localTransactions.filter(t => t.type === 'savings').reduce((s, t) => s + t.amount, 0);
+            if (localCurrentGoal.amount > 0 && currentSavings >= localCurrentGoal.amount && !localCurrentGoal.isCompleted) {
+                isArchiving = true;
+                try {
+                    await addDoc(collection(db, 'users', userId, 'completedGoals'), { description: localCurrentGoal.description, amount: localCurrentGoal.amount, date: new Date(), savingsTotal: currentSavings });
+                    await setDoc(doc(db, 'users', userId, 'goal', 'current'), { isCompleted: true }, { merge: true });
+                    const q = query(collection(db, 'users', userId, 'transactions'), where('type', '==', 'savings'));
+                    const snapshot = await getDocs(q);
+                    const batch = writeBatch(db);
+                    snapshot.docs.forEach(d => batch.update(d.ref, { type: 'completed_savings', description: `[Selesai] ${d.data().description}` }));
+                    await batch.commit();
+                } catch (e) { console.error(e); } 
+                finally { isArchiving = false; }
+            }
+        }
+        async function checkAndGenerateRecurringTransactions(userId) {
+            const now = new Date();
+            const toProcess = localRecurring.filter(item => item.nextDueDate.toDate() <= now);
+            if (toProcess.length === 0) return;
+            const batch = writeBatch(db);
+            toProcess.forEach(item => {
+                let nextDate = item.nextDueDate.toDate();
+                while (nextDate <= now) {
+                    batch.set(doc(collection(db, 'users', userId, 'transactions')), { description: item.description, amount: item.amount, type: item.type, category: item.category || null, createdAt: nextDate });
+                    if (item.frequency === 'weekly') nextDate.setDate(nextDate.getDate() + 7);
+                    else if (item.frequency === 'monthly') nextDate.setMonth(nextDate.getMonth() + 1);
+                    else if (item.frequency === 'yearly') nextDate.setFullYear(nextDate.getFullYear() + 1);
+                }
+                batch.update(doc(db, 'users', userId, 'recurringTransactions', item.id), { nextDueDate: nextDate });
+            });
+            try { await batch.commit(); } catch (e) { console.error(e); }
+        }
+        async function deleteRecurringTransaction(id, desc) {
+            showConfirmModal('Hapus Transaksi Berulang', `Yakin hapus "${desc}"?`, async () => {
+                const userId = auth.currentUser?.uid; if (!userId) return;
+                try { await deleteDoc(doc(db, 'users', userId, 'recurringTransactions', id)); } catch(e) { console.error(e); }
+            });
+        }
+        
+        // --- Event Listeners Setup ---
+        function setupGlobalEventListeners() {
+            $('show-signup').addEventListener('click', e => { e.preventDefault(); loginForm.classList.add('hidden'); signupForm.classList.remove('hidden'); });
+            $('show-login').addEventListener('click', e => { e.preventDefault(); signupForm.classList.add('hidden'); loginForm.classList.remove('hidden'); });
+            $('open-sidebar-btn').addEventListener('click', () => { $('sidebar').classList.remove('-translate-x-full'); $('sidebar-overlay').classList.remove('hidden'); });
+            [$('close-sidebar-btn'), $('sidebar-overlay')].forEach(el => el.addEventListener('click', () => { $('sidebar').classList.add('-translate-x-full'); $('sidebar-overlay').classList.add('hidden'); }));
+            $('logout-btn-sidebar').addEventListener('click', () => signOut(auth));
+            $('set-goal-btn').addEventListener('click', () => { $('goal-amount').value = localCurrentGoal.amount > 0 ? localCurrentGoal.amount : ''; openModal($('goal-modal')); });
+            $('cancel-goal-btn').addEventListener('click', () => closeModal($('goal-modal')));
+            $('savings-goal-description').addEventListener('click', () => { if (auth.currentUser) { $('edit-desc-input').value = localCurrentGoal.description || 'Tujuan Menabung'; openModal($('edit-desc-modal')); } });
+            $('cancel-edit-desc-btn').addEventListener('click', () => closeModal($('edit-desc-modal')));
+            $('clear-history-btn').addEventListener('click', () => showConfirmModal('Hapus Semua Transaksi', 'Ini akan menghapus SEMUA riwayat transaksi permanen. Yakin?', deleteAllTransactions, 'Hapus Semua'));
+            $('reset-all-data-btn').addEventListener('click', () => showConfirmModal('Reset Semua Data', 'PERINGATAN! Ini akan menghapus SEMUA data keuangan Anda. Tidak bisa dibatalkan. Yakin?', resetAllData, 'RESET TOTAL', 'bg-yellow-600'));
+            $('confirm-action-btn').addEventListener('click', () => { if (confirmActionCallback) confirmActionCallback(); closeModal($('confirm-modal')); });
+            $('cancel-confirm-btn').addEventListener('click', () => closeModal($('confirm-modal')));
+            $('cancel-edit-transaction-btn').addEventListener('click', () => closeModal($('edit-transaction-modal')));
+            $('set-budget-btn').addEventListener('click', openBudgetModal);
+            $('cancel-budget-btn').addEventListener('click', () => closeModal($('budget-modal')));
+            $('save-budget-btn').addEventListener('click', saveBudgets);
+            $('add-recurring-btn').addEventListener('click', () => openRecurringModal());
+            $('cancel-recurring-transaction-btn').addEventListener('click', () => closeModal($('recurring-transaction-modal')));
+            document.querySelectorAll('input[name="type"]').forEach(r => r.addEventListener('change', () => { const t = document.querySelector('input[name="type"]:checked').value; $('category-container').style.display = t === 'expense' ? 'block' : 'none'; }));
+            document.querySelectorAll('input[name="recurring-type"]').forEach(r => r.addEventListener('change', () => { const t = document.querySelector('input[name="recurring-type"]:checked').value; $('recurring-category-container').style.display = t === 'expense' ? 'block' : 'none'; }));
+            $('prev-month-btn').addEventListener('click', () => { currentDisplayDate.setMonth(currentDisplayDate.getMonth() - 1); setupFirestoreListeners(auth.currentUser.uid); });
+            $('next-month-btn').addEventListener('click', () => { currentDisplayDate.setMonth(currentDisplayDate.getMonth() + 1); setupFirestoreListeners(auth.currentUser.uid); });
+            $('transaction-filter-buttons').addEventListener('click', e => { const b = e.target.closest('.filter-btn'); if (b && b.dataset.filter !== currentFilter) { currentFilter = b.dataset.filter; document.querySelectorAll('.filter-btn').forEach(x => { x.classList.toggle('filter-active', x.dataset.filter === currentFilter); x.classList.toggle('filter-inactive', x.dataset.filter !== currentFilter); }); renderTransactions(); } });
+
+            // Form Submissions
+            loginForm.addEventListener('submit', async e => {
+                e.preventDefault();
+                const username = $('login-username').value.toLowerCase(), password = $('login-password').value;
+                const errorEl = $('login-error');
+                errorEl.textContent = '';
+                try {
+                    const userDoc = await getDoc(doc(db, 'usernames', username));
+                    if (!userDoc.exists()) { errorEl.textContent = "Username tidak ditemukan."; return; }
+                    await signInWithEmailAndPassword(auth, userDoc.data().email, password);
+                } catch (error) { errorEl.textContent = "Username atau password salah."; }
+            });
+
+            signupForm.addEventListener('submit', async e => {
+                e.preventDefault();
+                const username = $('signup-username').value.toLowerCase(), email = $('signup-email').value, phone = $('signup-phone').value, password = $('signup-password').value;
+                const errorEl = $('signup-error');
+                errorEl.textContent = '';
+                if (!username || !email || !phone || !password) { errorEl.textContent = "Semua kolom harus diisi."; return; }
+                try {
+                    const usernameSnap = await getDoc(doc(db, 'usernames', username));
+                    if (usernameSnap.exists()) { errorEl.textContent = "Username sudah digunakan."; return; }
+                    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                    const user = userCredential.user;
+                    await setDoc(doc(db, 'usernames', username), { email: user.email, uid: user.uid });
+                    await setDoc(doc(db, 'users', user.uid, 'profile', 'data'), { username, email, phone, photoURL: '', createdAt: new Date() });
+                } catch (error) {
+                    if (error.code === 'auth/email-already-in-use') errorEl.textContent = "Email ini sudah terdaftar.";
+                    else if (error.code === 'auth/weak-password') errorEl.textContent = "Password minimal harus 6 karakter.";
+                    else errorEl.textContent = "Gagal membuat akun.";
+                }
+            });
+
+            $('transaction-form').addEventListener('submit', async e => {
+                e.preventDefault();
+                const userId = auth.currentUser?.uid; if (!userId) return;
+                const newTransaction = {
+                    description: $('description').value.trim(),
+                    amount: parseFloat($('amount').value),
+                    type: document.querySelector('input[name="type"]:checked').value,
+                    createdAt: new Date()
+                };
+                if (newTransaction.type === 'expense') newTransaction.category = $('category').value;
+                if (!newTransaction.description || isNaN(newTransaction.amount) || newTransaction.amount <= 0) return;
+                try {
+                    await addDoc(collection(db, 'users', userId, 'transactions'), newTransaction);
+                    $('transaction-form').reset();
+                    document.querySelector('input[name="type"][value="income"]').checked = true;
+                    $('category-container').style.display = 'none';
+                } catch (error) { console.error("Error adding transaction:", error); }
+            });
+
+            $('edit-transaction-form').addEventListener('submit', async e => {
+                e.preventDefault();
+                const userId = auth.currentUser?.uid; if (!userId) return;
+                const transactionId = $('edit-transaction-id').value;
+                const updatedData = {
+                    description: $('edit-description').value.trim(),
+                    amount: parseFloat($('edit-amount').value),
+                };
+                if ($('edit-transaction-original-type').value === 'expense') updatedData.category = $('edit-category').value;
+                if (!updatedData.description || isNaN(updatedData.amount) || updatedData.amount <= 0) return;
+                try {
+                    await updateDoc(doc(db, 'users', userId, 'transactions', transactionId), updatedData);
+                    closeModal($('edit-transaction-modal'));
+                } catch (error) { console.error("Error updating transaction:", error); }
+            });
+
+            $('goal-form').addEventListener('submit', async e => {
+                e.preventDefault();
+                const userId = auth.currentUser?.uid; if (!userId) return;
+                const newAmount = parseFloat($('goal-amount').value);
+                if (isNaN(newAmount) || newAmount < 0) return;
+                try {
+                    await setDoc(doc(db, 'users', userId, 'goal', 'current'), {
+                        description: localCurrentGoal.description || 'Tujuan Menabung',
+                        amount: newAmount,
+                        isCompleted: false
+                    }, { merge: true });
+                    closeModal($('goal-modal'));
+                } catch(e) { console.error("Error setting goal:", e); }
+            });
+
+            $('edit-desc-form').addEventListener('submit', async e => {
+                e.preventDefault();
+                const userId = auth.currentUser?.uid; if (!userId) return;
+                const newDescription = $('edit-desc-input').value.trim();
+                if (!newDescription) return;
+                try {
+                    await setDoc(doc(db, 'users', userId, 'goal', 'current'), { description: newDescription }, { merge: true });
+                    closeModal($('edit-desc-modal'));
+                } catch(e) { console.error("Error updating goal description:", e); }
+            });
+            
+            $('recurring-transaction-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const userId = auth.currentUser?.uid; if (!userId) return;
+                const id = $('recurring-transaction-id').value;
+                const data = {
+                    description: $('recurring-description').value.trim(),
+                    amount: parseFloat($('recurring-amount').value),
+                    type: document.querySelector('input[name="recurring-type"]:checked').value,
+                    frequency: $('recurring-frequency').value,
+                    startDate: new Date($('recurring-start-date').value),
+                    category: document.querySelector('input[name="recurring-type"]:checked').value === 'expense' ? $('recurring-category').value : null
+                };
+                data.nextDueDate = data.startDate;
+                if (!data.description || isNaN(data.amount) || data.amount <= 0) return;
+                try {
+                    if (id) await updateDoc(doc(db, 'users', userId, 'recurringTransactions', id), data);
+                    else await addDoc(collection(db, 'users', userId, 'recurringTransactions'), data);
+                    closeModal($('recurring-transaction-modal'));
+                } catch (error) { console.error("Error saving recurring transaction: ", error); }
+            });
+
+            $('profile-pic-upload').addEventListener('change', e => {
+                const file = e.target.files[0];
+                const userId = auth.currentUser?.uid;
+                if (!file || !userId) return;
+                const storageRef = ref(storage, `profilePictures/${userId}/${file.name}`);
+                const uploadTask = uploadBytesResumable(storageRef, file);
+                const progressEl = $('profile-upload-progress');
+                progressEl.textContent = 'Mengunggah...';
+                uploadTask.on('state_changed', 
+                    (snapshot) => { progressEl.textContent = `Mengunggah: ${Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100)}%`; }, 
+                    (error) => { console.error("Upload failed:", error); progressEl.textContent = 'Gagal unggah.'; }, 
+                    () => {
+                        getDownloadURL(uploadTask.snapshot.ref).then(async (downloadURL) => {
+                            await setDoc(doc(db, 'users', userId, 'profile', 'data'), { photoURL: downloadURL }, { merge: true });
+                            progressEl.textContent = 'Berhasil!';
+                            setTimeout(() => progressEl.textContent = '', 2000);
+                        });
+                    }
+                );
+            });
+        }
+        setupGlobalEventListeners();
+
+        // --- Init ---
+        lucide.createIcons();
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
